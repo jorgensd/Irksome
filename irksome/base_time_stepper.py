@@ -1,6 +1,9 @@
 from abc import abstractmethod
-from firedrake import Function, NonlinearVariationalProblem, NonlinearVariationalSolver
-from firedrake.petsc import PETSc
+try:
+    from firedrake import Function, NonlinearVariationalProblem, NonlinearVariationalSolver
+    from firedrake.petsc import PETSc
+except ImportError:
+    from dolfinx.fem import Function
 from .tools import AI, get_stage_space, getNullspace, flatten_dats
 
 
@@ -18,7 +21,7 @@ class BaseTimeStepper:
             bcs = ()
         self.orig_bcs = bcs
         self.nullspace = nullspace
-        self.V = u0.function_space()
+        self.V = u0.function_space
 
         appctx_base = {
             "F": F,

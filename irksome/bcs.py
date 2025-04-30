@@ -1,15 +1,21 @@
-from firedrake.solving import _extract_bcs
-from firedrake import (DirichletBC, Function, TestFunction,
-                       NonlinearVariationalProblem,
-                       NonlinearVariationalSolver,
-                       replace, inner, dx)
+try:
+    from firedrake.solving import _extract_bcs
+    from firedrake import (DirichletBC, Function, TestFunction,
+                        NonlinearVariationalProblem,
+                        NonlinearVariationalSolver,
+                        replace, inner, dx)
+except ImportError:
+    from dolfinx.fem import DirichletBC
 from ufl import as_ufl
 
 
 def extract_bcs(bcs):
-    """Return an iterable of boundary conditions on the residual form"""
-    return tuple(bc.extract_form("F") for bc in _extract_bcs(bcs))
-
+    if bcs is None:
+        return ()
+    if isinstance(bcs, (tuple, list)):
+        return bcs
+    else: 
+        return (bcs,)
 
 def get_sub(u, indices):
     for i in indices:

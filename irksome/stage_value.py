@@ -1,10 +1,14 @@
 # formulate RK methods to solve for stage values rather than the stage derivatives.
 import numpy
-from FIAT import Bernstein, ufc_simplex
-from FIAT.barycentric_interpolation import LagrangePolynomialSet
-from firedrake import (Function, NonlinearVariationalProblem,
-                       NonlinearVariationalSolver, TestFunction, dx,
-                       inner)
+
+try:
+    from FIAT import Bernstein, ufc_simplex
+    from FIAT.barycentric_interpolation import LagrangePolynomialSet
+    from firedrake import (Function, NonlinearVariationalProblem,
+                        NonlinearVariationalSolver, TestFunction, dx,
+                        inner)
+except ImportError:
+    pass
 from ufl import zero
 from ufl.constantvalue import as_ufl
 

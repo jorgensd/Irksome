@@ -1,12 +1,20 @@
 from operator import mul
 from functools import reduce
 import numpy
-from firedrake import Function, FunctionSpace, MixedVectorSpaceBasis, Constant
+try:
+    from firedrake import Function, FunctionSpace, MixedVectorSpaceBasis, Constant
+except ImportError:
+    from dolfinx.fem import Function
+    from scifem import create_real_functionspace
+    from dolfinx.fem import Constant
+
 from ufl.algorithms.analysis import extract_type
 from ufl import as_tensor, zero
 from ufl import replace as ufl_replace
-from pyop2.types import MixedDat
-
+try:
+    from pyop2.types import MixedDat
+except ImportError:
+    pass
 from irksome.deriv import TimeDerivative
 
 
@@ -93,13 +101,21 @@ def is_ode(f, u):
 class MeshConstant(object):
     def __init__(self, msh):
         self.msh = msh
-        self.V = FunctionSpace(msh, 'R', 0)
+        try:
+            self.V = FunctionSpace(msh, 'R', 0)
+        except NameError:
+            self.V = create_real_functionspace(msh, ())
 
     def Constant(self, val=0.0):
-        return Function(self.V).assign(val)
-
+        try:
+            return Function(self.V).assign(val)
+        except AttributeError:
+            v = Function(self.V)
+            v.value = val
+            return v
 
 def ConstantOrZero(x, MC=None):
+    print(MC)
     const = MC.Constant if MC else Constant
     return zero() if abs(complex(x)) < 1.e-10 else const(x)
 

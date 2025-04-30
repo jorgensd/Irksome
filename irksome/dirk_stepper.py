@@ -1,7 +1,11 @@
 import numpy
-from firedrake import (Function,
-                       NonlinearVariationalProblem,
-                       NonlinearVariationalSolver)
+
+try:
+    from firedrake import (Function,
+                        NonlinearVariationalProblem,
+                        NonlinearVariationalSolver)
+except ImportError:
+    pass
 from ufl.constantvalue import as_ufl
 
 from .deriv import TimeDerivative, expand_time_derivatives

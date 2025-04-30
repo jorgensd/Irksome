@@ -1,4 +1,7 @@
-import FIAT
+try:
+    import FIAT
+except ImportError:
+    import basix
 import numpy
 from numpy import vander, zeros
 from numpy.linalg import solve
@@ -77,45 +80,59 @@ class CollocationButcherTableau(ButcherTableau):
     :arg order: the order of the resulting RK method.
     """
     def __init__(self, L, order):
-        assert L.ref_el == FIAT.ufc_simplex(1)
+        #assert L.ref_el == FIAT.ufc_simplex(1)
+        assert L.cell_type == basix.CellType.interval
+
+        assert L.basix_element.interpolation_is_identity
+
+        import numpy as np
 
         points = []
-        for ell in L.dual.nodes:
-            assert isinstance(ell, FIAT.functional.PointEvaluation)
-            # Assert singleton point for each node.
-            pt, = ell.get_point_dict().keys()
-            points.append(pt[0])
+        for i in range(2):
+            pts = L._x[i] 
+            for pt in pts:
+                for p in pt:
+                    if p.size > 0:
+                        points.append(p)
+        # points = []
+        # for ell in L.dual.nodes:
+        #     assert isinstance(ell, FIAT.functional.PointEvaluation)
+        #     # Assert singleton point for each node.
+        #     pt, = ell.get_point_dict().keys()
+        #     points.append(pt[0])
 
-        c = numpy.asarray(points)
+        c = numpy.asarray(np.hstack(points))
         # GLL DOFs are ordered by increasing entity dimension!
         perm = numpy.argsort(c)
         c = c[perm]
 
         num_stages = len(c)
 
-        Q = FIAT.make_quadrature(L.ref_el, 2*num_stages)
-        qpts = Q.get_points()
-        qwts = Q.get_weights()
+        # Q = FIAT.make_quadrature(L.ref_el, 2*num_stages)
+        qpts, qwts = basix.make_quadrature(L.cell_type, 2*num_stages)
+        
+        # # qpts = Q.get_points()
+        # # qwts = Q.get_weights()
 
-        Lvals = L.tabulate(0, qpts)[0, ][perm]
+        Lvals = L.tabulate(0, qpts)[0, :, perm]
 
         # integrates them all!
-        b = Lvals @ qwts
+        b = Lvals @ qwts.T
 
         # now for A, which means we have to adjust the interval
         A = numpy.zeros((num_stages, num_stages))
         for i in range(num_stages):
             qpts_i = qpts * c[i]
             qwts_i = qwts * c[i]
-            Lvals_i = L.tabulate(0, qpts_i)[0, ][perm]
-            A[i, :] = Lvals_i @ qwts_i
+            Lvals_i = L.tabulate(0, qpts_i)[0, :, perm]
+            A[i, :] = Lvals_i @ qwts_i.T
 
         Aexplicit = numpy.zeros((num_stages, num_stages))
         for i in range(num_stages):
             qpts_i = 1 + qpts * c[i]
             qwts_i = qwts * c[i]
-            Lvals_i = L.tabulate(0, qpts_i)[0, ][perm]
-            Aexplicit[i, :] = Lvals_i @ qwts_i
+            Lvals_i = L.tabulate(0, qpts_i)[0, :, perm]
+            Aexplicit[i, :] = Lvals_i @ qwts_i.T
 
         self.Aexplicit = Aexplicit
 
@@ -137,8 +154,13 @@ class GaussLegendre(CollocationButcherTableau):
     """
     def __init__(self, num_stages):
         assert num_stages > 0
-        U = FIAT.ufc_simplex(1)
-        L = FIAT.GaussLegendre(U, num_stages - 1)
+
+        # U = FIAT.ufc_simplex(1)
+        # L = FIAT.GaussLegendre(U, num_stages - 1)
+        L = basix.ufl.element("Lagrange", basix.CellType.interval, num_stages-1, lagrange_variant=basix.LagrangeVariant.gl_warped,
+                                     discontinuous=True)
+
+
         super(GaussLegendre, self).__init__(L, 2 * num_stages)
 
     def __str__(self):

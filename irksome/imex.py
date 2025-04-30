@@ -1,8 +1,11 @@
-import FIAT
+try:
+    import FIAT
+    from firedrake import (Function, NonlinearVariationalProblem,
+                        NonlinearVariationalSolver, TestFunction,
+                        as_ufl, dx, inner)
+except ImportError:
+    pass
 import numpy as np
-from firedrake import (Function, NonlinearVariationalProblem,
-                       NonlinearVariationalSolver, TestFunction,
-                       as_ufl, dx, inner)
 from ufl import zero
 
 from .ButcherTableaux import RadauIIA

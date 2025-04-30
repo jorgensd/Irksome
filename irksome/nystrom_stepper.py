@@ -2,7 +2,10 @@ from .base_time_stepper import StageCoupledTimeStepper
 from .bcs import BCStageData, bc2space
 from .deriv import Dt, TimeDerivative, expand_time_derivatives
 from .tools import replace, vecconst
-from firedrake import TestFunction, as_ufl
+try:
+    from firedrake import TestFunction, as_ufl
+except ImportError:
+    from ufl import TestFunction, as_ufl
 import numpy
 from ufl import zero
 

@@ -11,8 +11,11 @@ from itertools import chain
 from operator import contains, or_
 from typing import Callable, FrozenSet, List, NamedTuple, Tuple, Union
 
-from gem.node import Memoizer
-from tsfc.ufl_utils import ufl_reuse_if_untouched
+try:
+    from gem.node import Memoizer
+    from tsfc.ufl_utils import ufl_reuse_if_untouched
+except ImportError:
+    pass
 from ufl.algebra import Conj, Division, Product, Sum
 from ufl.averaging import CellAvg, FacetAvg
 from ufl.classes import MultiIndex
@@ -43,7 +46,7 @@ class SplitTimeForm(NamedTuple):
     remainder: Form
 
 
-def _filter(o: Expr, self: Memoizer) -> Expr:
+def _filter(o: Expr, self) -> Expr:
     if not isinstance(o, Expr):
         raise AssertionError(f"Cannot handle term with type {type(o)}")
     if self.predicate(o):
@@ -75,12 +78,12 @@ Result = Union[Tuple[()], Tuple[Coefficient, ...]]
 
 
 @singledispatch
-def _check_time_terms(o, self: Memoizer) -> Result:
+def _check_time_terms(o, self) -> Result:
     raise AssertionError(f"Unhandled type {type(o)}")
 
 
 @_check_time_terms.register(TimeDerivative)
-def _check_timederiv(o: TimeDerivative, self: Memoizer) -> Result:
+def _check_timederiv(o: TimeDerivative, self) -> Result:
     op, = o.ufl_operands
     if self(op):
         # op already has a TimeDerivative applied to it
@@ -92,14 +95,14 @@ def _check_timederiv(o: TimeDerivative, self: Memoizer) -> Result:
 
 
 @_check_time_terms.register(Expr)
-def _check_nonlinearop(o: Union[Terminal, Operator], self: Memoizer) -> Result:
+def _check_nonlinearop(o: Union[Terminal, Operator], self) -> Result:
     if any(map(self, o.ufl_operands)):
         raise ValueError("Can't apply nonlinear operator to time derivative")
     return ()
 
 
 @_check_time_terms.register(Division)
-def _check_division(o: Division, self: Memoizer) -> Result:
+def _check_division(o: Division, self) -> Result:
     a, b = map(self, o.ufl_operands)
     if b:
         raise ValueError("Can't divide by time derivative")
@@ -110,7 +113,7 @@ def _check_division(o: Division, self: Memoizer) -> Result:
 @_check_time_terms.register(Inner)
 @_check_time_terms.register(Dot)
 @_check_time_terms.register(Outer)
-def _check_product(o: Operator, self: Memoizer) -> Result:
+def _check_product(o: Operator, self) -> Result:
     a, b = map(self, o.ufl_operands)
     if a and b:
         raise ValueError("Can't take product of time derivatives")
@@ -126,14 +129,14 @@ def _check_product(o: Operator, self: Memoizer) -> Result:
 @_check_time_terms.register(Variable)
 @_check_time_terms.register(Sum)
 @_check_time_terms.register(ListTensor)
-def _check_linearop(o: Operator, self: Memoizer) -> Result:
+def _check_linearop(o: Operator, self) -> Result:
     return tuple(set(chain(*map(self, o.ufl_operands))))
 
 
 @_check_time_terms.register(Indexed)
 @_check_time_terms.register(IndexSum)
 @_check_time_terms.register(ComponentTensor)
-def _check_indexed(o: Operator, self: Memoizer) -> Result:
+def _check_indexed(o: Operator, self) -> Result:
     return self(o.ufl_operands[0])
 
 

@@ -1,12 +1,16 @@
 import numpy
-from firedrake import Function, TestFunction
-from firedrake import NonlinearVariationalProblem as NLVP
-from firedrake import NonlinearVariationalSolver as NLVS
-from firedrake import assemble, dx, inner, norm
-from firedrake.bcs import EquationBC, EquationBCSplit
+
+try:
+    from firedrake import Function, TestFunction
+    from firedrake import NonlinearVariationalProblem as NLVP
+    from firedrake import NonlinearVariationalSolver as NLVS
+    from firedrake import assemble, dx, inner, norm
+    from firedrake.bcs import EquationBC, EquationBCSplit
+except ImportError:
+    from ufl import TestFunction
 
 from ufl.constantvalue import as_ufl
-from .tools import AI, replace, vecconst
+from .tools import AI, replace, vecconst, MeshConstant
 from .deriv import Dt, TimeDerivative, expand_time_derivatives
 from .bcs import EmbeddedBCData, BCStageData, extract_bcs, bc2space, stage2spaces4bc
 from .manipulation import extract_terms
@@ -57,21 +61,21 @@ def getForm(F, butch, t, dt, u0, stages, bcs=None, bc_type=None, splitting=AI):
     # preprocess time derivatives
     F = expand_time_derivatives(F, t=t, timedep_coeffs=(u0,))
     v = F.arguments()[0]
-    V = v.function_space()
-    assert V == u0.function_space()
-
-    c = vecconst(butch.c)
+    V = v.ufl_function_space()
+    assert V == u0.ufl_function_space()
+    mc = MeshConstant(u0.function_space.mesh)
+    c = vecconst(butch.c, mc)
     bA1, bA2 = splitting(butch.A)
     try:
         bA2inv = numpy.linalg.inv(bA2)
     except numpy.linalg.LinAlgError:
         raise NotImplementedError("We require A = A1 A2 with A2 invertible")
-    A1 = vecconst(bA1)
-    A2inv = vecconst(bA2inv)
+    A1 = vecconst(bA1, mc)
+    A2inv = vecconst(bA2inv, mc)
 
     # s-way product space for the stage variables
     num_stages = butch.num_stages
-    Vbig = stages.function_space()
+    Vbig = stages.function_space
     test = TestFunction(Vbig)
 
     # set up the pieces we need to work with to do our substitutions
@@ -89,7 +93,7 @@ def getForm(F, butch, t, dt, u0, stages, bcs=None, bc_type=None, splitting=AI):
                    dtu: A2invw[i]}
 
     Fnew = sum(replace(F, repl[i]) for i in range(num_stages))
-
+    breakpoint()
     if bcs is None:
         bcs = []
     if bc_type == "ODE":
@@ -106,7 +110,7 @@ def getForm(F, butch, t, dt, u0, stages, bcs=None, bc_type=None, splitting=AI):
     elif bc_type == "DAE":
         try:
             bA1inv = numpy.linalg.inv(bA1)
-            A1inv = vecconst(bA1inv)
+            A1inv = vecconst(bA1inv, mc)
         except numpy.linalg.LinAlgError:
             raise NotImplementedError("Cannot have DAE BCs for this Butcher Tableau/splitting")
 
@@ -181,12 +185,13 @@ class StageDerivativeTimeStepper(StageCoupledTimeStepper):
     def __init__(self, F, butcher_tableau, t, dt, u0, bcs=None,
                  solver_parameters=None, splitting=AI,
                  appctx=None, bc_type="DAE", **kwargs):
-
-        self.num_fields = len(u0.function_space())
+        num_sub_spaces = u0.function_space.num_sub_spaces
+        self.num_fields = max(1, num_sub_spaces)
         self.butcher_tableau = butcher_tableau
         A1, A2 = splitting(butcher_tableau.A)
         try:
-            self.updateb = vecconst(numpy.linalg.solve(A2.T, butcher_tableau.b))
+                 
+            self.updateb = vecconst(numpy.linalg.solve(A2.T, butcher_tableau.b), MeshConstant(u0.function_space.mesh))
         except numpy.linalg.LinAlgError:
             raise NotImplementedError("A=A1 A2 splitting needs A2 invertible")
 

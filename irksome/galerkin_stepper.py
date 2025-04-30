@@ -1,6 +1,9 @@
-from FIAT import (Bernstein, DiscontinuousElement, DiscontinuousLagrange,
-                  IntegratedLegendre, Lagrange, Legendre,
-                  make_quadrature, ufc_simplex)
+try:
+    from FIAT import (Bernstein, DiscontinuousElement, DiscontinuousLagrange,
+                    IntegratedLegendre, Lagrange, Legendre,
+                    make_quadrature, ufc_simplex)
+except ImportError:
+    pass
 from ufl import zero
 from ufl.constantvalue import as_ufl
 from .base_time_stepper import StageCoupledTimeStepper
@@ -8,8 +11,10 @@ from .bcs import bc2space, stage2spaces4bc
 from .deriv import TimeDerivative, expand_time_derivatives
 from .tools import replace, vecconst
 import numpy as np
-from firedrake import TestFunction
-
+try:
+    from firedrake import TestFunction
+except ImportError:
+    from ufl import TestFunction
 
 def getFormGalerkin(F, L_trial, L_test, Q, t, dt, u0, stages, bcs=None):
 
