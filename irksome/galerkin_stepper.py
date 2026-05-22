@@ -9,7 +9,7 @@ from .ufl.deriv import TimeDerivative, expand_time_derivatives
 from .ufl.estimate_degrees import TimeDegreeEstimator, get_degree_mapping
 from .labeling import split_quadrature, as_form
 from .scheme import create_time_quadrature, ufc_line
-from .tools import AI, IA, dot, extract_timedep_arguments, fields_to_components, reshape, replace
+from .tools import AI, IA, dot, fields_to_components, reshape, replace
 from .constant import vecconst
 from .discontinuous_galerkin_stepper import getElement as getTestElement
 from .integrated_lagrange import IntegratedLagrange
@@ -18,6 +18,7 @@ from .stage_derivative import getForm
 from .stage_value import getFormStage
 from .backend import get_backend
 import numpy as np
+
 
 
 def getTrialElement(basis_type, order):
@@ -62,8 +63,8 @@ def getElements(basis_type, order):
 
 
 def getTermGalerkin(F, L_trial, L_test, Q, t, dt, u0, stages, test, aux_indices, backend="firedrake"):
-    v, u = extract_timedep_arguments(F, u0)
     backend_cls = get_backend(backend)
+    v, u = backend_cls.extract_timedep_arguments(F, u0)
     V = backend_cls.get_function_space(v)
     assert V == backend_cls.get_function_space(u0)
 

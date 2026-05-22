@@ -5,7 +5,7 @@ from ufl import Form, as_ufl, dx, inner
 from .backend import get_backend
 from .constant import MeshConstant, vecconst
 from .stage_value import getFormStage
-from .tools import (AI, IA, extract_timedep_arguments, reshape, replace,
+from .tools import (AI, IA, replace,
                     get_stage_space)
 from .tableaux.ButcherTableaux import RadauIIA
 from .ufl.deriv import TimeDerivative, expand_time_derivatives
@@ -39,7 +39,7 @@ def getFormExplicit(Fexp, butch, u0, UU, t, dt, splitting=None, backend="firedra
     which really just differ by which constants are in them."""
     backend_cls = get_backend(backend)
 
-    v, u = extract_timedep_arguments(Fexp, u0)
+    v, u = backend_cls.extract_timedep_arguments(Fexp, u0)
     V = backend_cls.get_function_space(v)
     assert V == backend_cls.get_function_space(u0)
     Vbig = UU.function_space()
@@ -52,8 +52,8 @@ def getFormExplicit(Fexp, butch, u0, UU, t, dt, splitting=None, backend="firedra
     Ait = vecconst(butch.A, backend=backend)
     C = vecconst(butch.c, backend=backend)
 
-    v_np = reshape(VV, (num_stages, *u0.ufl_shape))
-    u_np = reshape(UU, (num_stages, *u0.ufl_shape))
+    v_np = backend_cls.reshape(VV, (num_stages, *u0.ufl_shape))
+    u_np = backend_cls.reshape(UU, (num_stages, *u0.ufl_shape))
 
     Fit = Form([])
     Fprop = Form([])

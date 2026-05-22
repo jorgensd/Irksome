@@ -9,13 +9,13 @@ from ufl import Form, as_tensor, as_ufl, dx, inner
 from .tableaux.ButcherTableaux import CollocationButcherTableau
 from .ufl.deriv import expand_time_derivatives
 from .ufl.manipulation import split_time_derivative_terms, remove_time_derivatives
-from .tools import AI, extract_timedep_arguments, dot, reshape, replace
+from .tools import AI, dot, replace
 from .constant import vecconst
 from .base_time_stepper import StageCoupledTimeStepper
 from .backend import get_backend
 
 
-def to_value(u0, stages, vandermonde):
+def to_value(u0, stages, vandermonde, backend_cls):
     """convert from Bernstein to Lagrange representation
 
     the Bernstein coefficients are [u0; ZZ], and the Lagrange
@@ -23,10 +23,10 @@ def to_value(u0, stages, vandermonde):
     Since u0 is not part of the unknown vector of stages, we disassemble
     the Vandermonde matrix (first row is [1, 0, ...]).
     """
-    ZZ_np = reshape(stages, (-1, *u0.ufl_shape))
+    ZZ_np = backend_cls.reshape(stages, (-1, *u0.ufl_shape))
     if vandermonde is None:
         return ZZ_np
-    u0_np = reshape(u0, (-1, *u0.ufl_shape))
+    u0_np = backend_cls.reshape(u0, (-1, *u0.ufl_shape))
     u_np = numpy.concatenate((u0_np, ZZ_np))
     return dot(vandermonde[1:], u_np)
 
@@ -75,8 +75,8 @@ def getFormStage(F, butch, t, dt, u0, stages, bcs=None, splitting=AI, vandermond
        - `bcnew`, a list of :class:`DirichletBC` objects to be posed
          on the stages
     """
-    v, u = extract_timedep_arguments(F, u0)
     backend_cls = get_backend(backend)
+    v, u = backend_cls.extract_timedep_arguments(F, u0)
     V = backend_cls.get_function_space(v)
     assert V == backend_cls.get_function_space(u0)
 
@@ -95,8 +95,8 @@ def getFormStage(F, butch, t, dt, u0, stages, bcs=None, splitting=AI, vandermond
     test = backend_cls.TestFunction(Vbig)
 
     # set up the pieces we need to work with to do our substitutions
-    v_np = reshape(test, (num_stages, *v.ufl_shape))
-    w_np = to_value(u0, stages, vandermonde)
+    v_np = backend_cls.reshape(test, (num_stages, *v.ufl_shape))
+    w_np = to_value(u0, stages, vandermonde, backend_cls)
     A1Tv = dot(A1.T, v_np)
     A2invTv = dot(A2inv.T, v_np)
 

@@ -2,7 +2,7 @@ import numpy
 from ufl.constantvalue import as_ufl
 
 from .ufl.deriv import Dt, expand_time_derivatives
-from .tools import extract_timedep_arguments, replace
+from .tools import replace
 from .constant import MeshConstant, vecconst
 from .nystrom_stepper import butcher_to_nystrom, NystromTableau
 from .backend import get_backend
@@ -15,7 +15,7 @@ def getFormDIRKNystrom(F, ks, tableau, t, dt, u0, ut0, bcs=None, bc_type=None, b
     if bc_type is None:
         bc_type = "DAE"
 
-    v, u = extract_timedep_arguments(F, u0)
+    v, u = backend_cls.extract_timedep_arguments(F, u0)
     V = backend_cls.get_function_space(v)
     assert V == backend_cls.get_function_space(u0)
 

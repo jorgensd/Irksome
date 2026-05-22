@@ -3,7 +3,7 @@ import numpy
 from petsc4py import PETSc
 from ufl import as_ufl, as_tensor, dx, inner
 from .constant import vecconst
-from .tools import AI, dot, extract_timedep_arguments, fields_to_components, replace, reshape
+from .tools import AI, dot, fields_to_components, replace
 from .ufl.deriv import Dt, TimeDerivative, expand_time_derivatives
 from .backend import get_backend
 
@@ -58,7 +58,7 @@ def getForm(F, butch, t, dt, u0, stages, bcs=None, bc_type=None, splitting=AI, a
     backend_cls = get_backend(backend)
     if bc_type is None:
         bc_type = "DAE"
-    v, u = extract_timedep_arguments(F, u0)
+    v, u = backend_cls.extract_timedep_arguments(F, u0)
     V = backend_cls.get_function_space(v)
     assert V == backend_cls.get_function_space(u0)
     # preprocess time derivatives
@@ -79,8 +79,11 @@ def getForm(F, butch, t, dt, u0, stages, bcs=None, bc_type=None, splitting=AI, a
     test = backend_cls.TestFunction(Vbig)
 
     # set up the pieces we need to work with to do our substitutions
-    v_np = reshape(test, (num_stages, *v.ufl_shape))
-    w_np = reshape(stages, (num_stages, *u.ufl_shape))
+    breakpoint()
+
+    v_np = backend_cls.reshape(test, (num_stages, *v.ufl_shape))
+    w_np = backend_cls.reshape(stages, (num_stages, *u.ufl_shape))
+
     A1w = dot(A1, w_np)
     A2invw = dot(A2inv, w_np)
     dtu = TimeDerivative(u)
@@ -89,18 +92,39 @@ def getForm(F, butch, t, dt, u0, stages, bcs=None, bc_type=None, splitting=AI, a
 
     repl = {}
     for i in range(num_stages):
+        breakpoint()
         usub = u0 + as_tensor(A1w[i]) * dt
         dtusub = A2invw[i]
         if aux_components:
             # Apply TimeDerivative substitution to auxiliary fields
-            usub = reshape(usub, u0.ufl_shape)
+            usub = backend_cls.reshape(usub, u0.ufl_shape)
             usub[aux_components] = dtusub[aux_components] * dt
+         
+        def expand(old_val, new_val):
+            if backend == "firedrake":
+                return {old_val: new_val}
+            else:
+                import irksome.backends.dolfinx
+                if isinstance(old_val, irksome.backends.dolfinx.MixedArgumentWrapper):
+                    old_expanded = old_val._args
+                else:
+                    old_expanded = old_val
 
+                if isinstance(new_val, irksome.backends.dolfinx.MixedArgumentWrapper):
+                    new_expanded = new_val._args
+                else:
+                    new_expanded = new_val
+                breakpoint()
+
+                assert len(old_expanded) == len(new_expanded)
+            
+
+        vs = expand(v, v_np[i])
         repl[i] = {t: t + c[i] * dt,
                    v: v_np[i],
                    u: usub,
                    dtu: dtusub}
-
+        breakpoint()
     Fnew = sum(replace(F, repl[i]) for i in range(num_stages))
 
     if bcs is None:

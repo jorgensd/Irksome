@@ -108,6 +108,11 @@ class Backend(Protocol):
     def getNullspace(V, Vbig, num_stages, nullspace):
         ...
 
+    def extract_timedep_arguments(F, u0):
+        ...
+
+    def reshape(expr, shape):
+        ...
 
 def get_backend(backend: str | types.ModuleType) -> Backend:
     """Get backend class from backend name.

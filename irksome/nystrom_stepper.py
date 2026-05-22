@@ -2,7 +2,7 @@ from .base_time_stepper import StageCoupledTimeStepper
 from .bcs import BCStageData
 from .ufl.deriv import Dt, TimeDerivative, expand_time_derivatives
 from .backend import get_backend
-from .tools import dot, extract_timedep_arguments, reshape, replace
+from .tools import dot, replace
 from .constant import vecconst
 import numpy
 from ufl import Form, as_ufl
@@ -77,7 +77,7 @@ def getFormNystrom(F, tableau, t, dt, u0, ut0, stages,
     if bc_type is None:
         bc_type = "DAE"
 
-    v, u = extract_timedep_arguments(F, u0)
+    v, u = backend_cls.extract_timedep_arguments(F, u0)
     V = backend_cls.get_function_space(v)
     assert V == backend_cls.get_function_space(u0)
 
@@ -92,8 +92,8 @@ def getFormNystrom(F, tableau, t, dt, u0, ut0, stages,
     Vbig = stages.function_space()
     test = backend_cls.TestFunction(Vbig)
 
-    v_np = reshape(test, (num_stages, *u0.ufl_shape))
-    k_np = reshape(stages, (num_stages, *u0.ufl_shape))
+    v_np = backend_cls.reshape(test, (num_stages, *u0.ufl_shape))
+    k_np = backend_cls.reshape(stages, (num_stages, *u0.ufl_shape))
 
     Ak = dot(A, k_np)
     Abark = dot(Abar, k_np)

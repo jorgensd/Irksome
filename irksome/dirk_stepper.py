@@ -3,7 +3,7 @@ from ufl import as_ufl, lhs
 
 from .constant import vecconst, MeshConstant
 from .ufl.deriv import TimeDerivative, expand_time_derivatives
-from .tools import extract_timedep_arguments, replace
+from .tools import replace
 from .backend import get_backend
 
 
@@ -12,7 +12,7 @@ def getFormDIRK(F, ks, butch, t, dt, u0, bcs=None, kgac=None, backend="firedrake
     if bcs is None:
         bcs = []
 
-    v, u = extract_timedep_arguments(F, u0)
+    v, u = backend_cls.extract_timedep_arguments(F, u0)
     V = backend_cls.get_function_space(v)
     assert V == backend_cls.get_function_space(u0)
 

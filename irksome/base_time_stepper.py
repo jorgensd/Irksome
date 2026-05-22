@@ -114,13 +114,11 @@ class StageCoupledTimeStepper(BaseTimeStepper):
         self.num_steps = 0
         self.num_nonlinear_iterations = 0
         self.num_linear_iterations = 0
-
         stages = self.get_stages()
         self.stages = stages
 
         V = self._backend.get_function_space(u0)
         Vbig = stages.function_space()
-
         F_linear = len(as_form(F).arguments()) == 2
         stages_F = self._backend.TrialFunction(Vbig) if F_linear else stages
         Fbig, bigBCs = self.get_form_and_bcs(stages_F)

@@ -15,9 +15,6 @@ def dot(A, B):
     return numpy.tensordot(A, B, (-1, 0))
 
 
-def reshape(expr, shape):
-    return numpy.reshape([expr[i] for i in numpy.ndindex(expr.ufl_shape)], shape)
-
 
 def flatten_dats(dats):
     from pyop2.types import MixedDat
@@ -46,16 +43,7 @@ def split_stages(V, stages):
     return ks
 
 
-def extract_timedep_arguments(F, u0):
-    """Return both arguments if ``F`` is a bilinear form, otherwise
-    return the unique argument and ``u0``.
-    """
-    try:
-        v, u = F.arguments()
-    except ValueError:
-        v, = F.arguments()
-        u = u0
-    return v, u
+
 
 
 def fields_to_components(V, fields):
